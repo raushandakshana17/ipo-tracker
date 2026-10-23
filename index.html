@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IPO Profit Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b3d33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f6f4; --surface:#ffffff; --ink:#14211c; --muted:#66736d; --line:#e2e7e3;
+    --deep:#0b3d33; --accent:#0b6b5c; --accent-soft:#e3f1ed;
+    --profit:#0f7a43; --loss:#b42318;
+    --amber:#8a5a00; --amber-soft:#fdf1d6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-padding-top:70px}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+  [hidden]{display:none!important}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer}
+  :focus-visible{outline:3px solid #7cc4b4;outline-offset:2px}
+  svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+  /* Login */
+  .login{min-height:100dvh;display:grid;place-items:center;padding:24px}
+  .login-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:32px 24px;text-align:center}
+  .login-card h1{margin:0 0 8px;font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .login-card p{margin:0 0 24px;color:var(--muted)}
+  .g-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;background:#fff;border:1px solid #cfd6d1;border-radius:12px;font-weight:600}
+  .g-btn:active{background:#f1f3f2}
+
+  /* Header */
+  .top{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));background:rgba(244,246,244,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .brand{font-weight:800;font-size:17px;letter-spacing:-.01em}
+  .link-btn{background:none;border:0;color:var(--accent);font-weight:600;min-height:40px;padding:0 4px}
+
+  main{max-width:720px;margin:0 auto;padding:16px 16px calc(110px + env(safe-area-inset-bottom))}
+
+  /* Summary */
+  .summary{background:var(--deep);color:#fff;border-radius:24px;padding:22px 20px 18px}
+  .summary .label{margin:0;font-size:13px;opacity:.75;font-weight:500}
+  .total{margin:4px 0 14px;font-size:clamp(32px,9vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1.1;word-break:break-word}
+  .total.pos{color:#8ee6bf} .total.neg{color:#ffb4a8}
+  .stats{display:flex;gap:18px;flex-wrap:wrap;padding-top:14px;border-top:1px solid rgba(255,255,255,.18);font-size:13px;opacity:.9}
+  .stats b{font-size:16px;margin-right:4px}
+
+  /* Profile chips */
+  .chips-row{display:flex;gap:8px;overflow-x:auto;padding:16px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+  .chips-row::-webkit-scrollbar{display:none}
+  #chips{display:flex;gap:8px}
+  .chip{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-weight:600;font-size:14px;white-space:nowrap}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.mg{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .chip small{opacity:.7;font-weight:500;margin-left:2px}
+
+  /* IPO cards */
+  .section-title{margin:18px 2px 10px;font-size:14px;font-weight:700;color:var(--muted)}
+  .ipo{background:var(--surface);border:1px solid var(--line);border-radius:18px;margin-bottom:10px;overflow:hidden}
+  .ipo-head{display:flex;justify-content:space-between;gap:12px;padding:14px 16px 10px}
+  .ipo h3{margin:0;font-size:16px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+  .meta{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+  .who{font-size:13px;color:var(--muted);font-weight:500}
+  .badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
+  .badge.allotted{background:var(--accent-soft);color:var(--accent)}
+  .badge.applied{background:var(--amber-soft);color:var(--amber)}
+  .badge.none{background:#eceeed;color:#59635e}
+  .pl{text-align:right;flex:none}
+  .pl strong{display:block;font-size:19px;font-weight:800;letter-spacing:-.01em}
+  .pl span{font-size:12px;color:var(--muted)}
+  .pl.pos strong{color:var(--profit)} .pl.neg strong{color:var(--loss)} .pl.wait strong{color:var(--muted);font-size:15px;font-weight:600}
+  .figs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0;padding:10px 16px 12px}
+  .figs dt{font-size:11.5px;color:var(--muted);font-weight:500}
+  .figs dd{margin:2px 0 0;font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+  .actions{display:flex;border-top:1px solid var(--line)}
+  .actions button{flex:1;min-height:44px;background:none;border:0;font-weight:600;font-size:14px;color:var(--accent)}
+  .actions button+button{border-left:1px solid var(--line);color:var(--loss)}
+  .actions button:active{background:#f4f6f4}
+
+  .empty{background:var(--surface);border:1.5px dashed #c5d0ca;border-radius:18px;padding:28px 20px;text-align:center;color:var(--muted)}
+  .empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+  .empty button{margin-top:14px}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:0 20px;border:0;border-radius:14px;background:var(--accent);color:#fff;font-weight:700}
+  .btn:active{background:var(--deep)}
+  .btn.soft{background:#e9eeea;color:var(--ink)}
+  .btn.block{width:100%}
+  .fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:6;min-height:56px;padding:0 24px;border:0;border-radius:99px;background:var(--accent);color:#fff;font-weight:700;font-size:16px;box-shadow:0 8px 24px rgba(11,61,51,.35)}
+  .fab:active{background:var(--deep)}
+
+  /* Dialogs (bottom sheet on phones) */
+  dialog{width:100%;max-width:480px;max-height:92dvh;margin:auto auto 0;padding:0;border:0;border-radius:24px 24px 0 0;background:var(--surface);color:var(--ink);overflow:auto}
+  dialog::backdrop{background:rgba(10,25,20,.5)}
+  @media(min-width:600px){dialog{margin:auto;border-radius:24px}}
+  .sheet{padding:20px 20px calc(20px + env(safe-area-inset-bottom))}
+  .sheet h2{margin:0 0 16px;font-size:20px;font-weight:800;letter-spacing:-.01em}
+  .hint{margin:-8px 0 14px;color:var(--amber);background:var(--amber-soft);padding:8px 12px;border-radius:10px;font-size:13px}
+  .field{display:block;margin-bottom:14px}
+  .field>span{display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--muted)}
+  .field input,.field select{width:100%;min-height:48px;padding:0 14px;border:1px solid #cfd6d1;border-radius:12px;background:#fff;font-size:16px}
+  .field input:focus,.field select:focus{border-color:var(--accent);outline:3px solid #cbe6df;outline-offset:0}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field small{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
+  .sheet-actions{display:flex;gap:10px;margin-top:6px}
+  .sheet-actions .btn{flex:1}
+
+  /* Profile list */
+  .prow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;background:none;border:0;border-bottom:1px solid var(--line);text-align:left}
+  .prow:last-of-type{border-bottom:0}
+  .av{width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+  .pinfo{flex:1;min-width:0}
+  .pinfo b{display:block;font-size:15px;font-weight:700;overflow-wrap:anywhere}
+  .pinfo small{font-size:12.5px;color:var(--muted)}
+  .pnum{text-align:right}
+  .pnum b{display:block;font-size:13.5px;font-weight:700}
+  .pnum small{font-size:12px;color:var(--muted)}
+  .pnum .pos{color:var(--profit)} .pnum .neg{color:var(--loss)} .pnum .zero{color:var(--muted)}
+  .prow svg.ic{color:var(--muted)}
+  .add-wrap{margin-top:12px}
+
+  /* Delete zone */
+  .danger-zone{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);text-align:center}
+  .danger-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;background:none;border:0;color:var(--loss);font-weight:700}
+  .danger-zone small{display:block;color:var(--muted);font-size:12.5px}
+
+  @media(prefers-reduced-motion:no-preference){
+    dialog[open]{animation:rise .22s ease-out}
+    @keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+  }
+</style>
+</head>
+<body>
+
+<div id="login" class="login">
+  <div class="login-card">
+    <h1>IPO Profit Tracker</h1>
+    <p>Track IPO profit and loss across all your PAN profiles in one place.</p>
+    <button class="g-btn" id="signin">
+      <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.6z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand">IPO Profit Tracker</div>
+    <button class="link-btn" id="signout">Sign out</button>
+  </header>
+
+  <main>
+    <section class="summary" aria-live="polite">
+      <p class="label">Net profit / loss · <span id="scope">All profiles</span></p>
+      <p class="total" id="total">₹0.00</p>
+      <div class="stats">
+        <div><b id="sAllot">0</b>allotted</div>
+        <div><b id="sPend">0</b>awaiting result</div>
+        <div><b id="sNone">0</b>not allotted</div>
+      </div>
+    </section>
+
+    <div class="chips-row">
+      <div id="chips"></div>
+      <button class="chip mg" id="openManage">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/><path d="M21 21v-2a4 4 0 0 0-3-3.9"/></svg>
+        Manage
+      </button>
+    </div>
+
+    <h2 class="section-title" id="listTitle">IPO entries</h2>
+    <section id="list"></section>
+  </main>
+
+  <button class="fab" id="fab">+ Add IPO</button>
+</div>
+
+<!-- IPO form -->
+<dialog id="ipoDialog">
+  <div class="sheet">
+    <h2 id="formTitle">Add IPO entry</h2>
+    <label class="field"><span>IPO name</span><input id="iname" placeholder="e.g. Tata Technologies" autocomplete="off"></label>
+    <label class="field"><span>Profile</span><select id="iprofile"></select></label>
+    <label class="field"><span>Status</span>
+      <select id="istatus"><option>Applied</option><option>Allotted</option><option>Not allotted</option></select>
+    </label>
+    <div class="row2">
+      <label class="field"><span>Shares</span><input id="iqty" type="number" inputmode="numeric" min="0" placeholder="0"></label>
+      <label class="field"><span>Issue price (₹)</span><input id="iprice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
+    </div>
+    <div class="row2">
+      <label class="field"><span>Sell price (₹)</span><input id="isell" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"><small>Fill in after you sell</small></label>
+      <label class="field"><span>Charges (₹)</span><input id="icharges" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn soft" id="cancelIpo" type="button">Cancel</button>
+      <button class="btn" id="saveIpo" type="button">Save entry</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Manage profiles -->
+<dialog id="manageDialog">
+  <div class="sheet">
+    <h2>Profiles</h2>
+    <div id="profileList"></div>
+    <div class="add-wrap">
+      <button class="btn block" id="addFromManage" type="button">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Add profile
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Add / edit profile -->
+<dialog id="profileDialog">
+  <div class="sheet">
+    <h2 id="profileTitle">Add profile</h2>
+    <p class="hint" id="profileHint" hidden>Add a profile first. Each IPO entry belongs to one profile.</p>
+    <label class="field"><span>Profile name</span><input id="pname" placeholder="e.g. Dad" autocomplete="off"></label>
+    <label class="field"><span>Last 4 characters of PAN (optional)</span><input id="ppan" maxlength="4" placeholder="e.g. 4F" autocapitalize="characters" autocomplete="off"><small>Only these characters are stored, never the full PAN.</small></label>
+    <div class="sheet-actions">
+      <button class="btn soft" id="cancelProfile" type="button">Cancel</button>
+      <button class="btn" id="saveProfile" type="button">Add profile</button>
+    </div>
+    <div class="danger-zone" id="dangerZone" hidden>
+      <button class="danger-btn" id="deleteProfile" type="button">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>
+        Delete profile
+      </button>
+      <small id="deleteNote"></small>
+    </div>
+  </div>
+</dialog>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, collection, addDoc, setDoc, doc, deleteDoc, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ===== PASTE YOUR FIREBASE CONFIG =====
+const firebaseConfig = {
+  apiKey: "AIzaSyC6OQKECRpulqFZevie1V3jFV02zdMgaR0",
+  authDomain: "ipo-tracker-cf1d7.firebaseapp.com",
+  projectId: "ipo-tracker-cf1d7",
+  storageBucket: "ipo-tracker-cf1d7.firebasestorage.app",
+  messagingSenderId: "992878310279",
+  appId: "1:992878310279:web:9c9430be34aeea358f5922"
+}
+// ======================================
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const rupee = n => n == null ? "–" : "₹" + fmt(n);
+const signed = n => (n > 0 ? "+" : n < 0 ? "−" : "") + "₹" + fmt(n);
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const ICON_PENCIL = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>`;
+
+let uid = null, profiles = [], ipos = [], filter = "all", editingId = null, editingProfileId = null, cameFromManage = false, unsubs = [];
+
+$("signin").onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch(e => alert(e.message));
+$("signout").onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, user => {
+  unsubs.forEach(u => u()); unsubs = [];
+  if (!user) { uid = null; $("login").hidden = false; $("app").hidden = true; return; }
+  uid = user.uid; $("login").hidden = true; $("app").hidden = false;
+  unsubs.push(onSnapshot(collection(db, "users", uid, "profiles"), s => {
+    profiles = s.docs.map(d => ({ id: d.id, ...d.data() })); render();
+  }));
+  unsubs.push(onSnapshot(collection(db, "users", uid, "ipos"), s => {
+    ipos = s.docs.map(d => ({ id: d.id, ...d.data() })); render();
+  }));
+});
+
+/* ---------- dialogs ---------- */
+[$("ipoDialog"), $("manageDialog"), $("profileDialog")].forEach(d =>
+  d.addEventListener("click", e => { if (e.target === d) d.close(); }));
+
+/* ---------- profiles: manage / add / edit / delete ---------- */
+$("openManage").onclick = () => $("manageDialog").showModal();
+
+// After the add/edit sheet closes, return to the Profiles list if we came from there
+$("profileDialog").addEventListener("close", () => {
+  if (cameFromManage) { cameFromManage = false; $("manageDialog").showModal(); }
+});
+
+function openProfileForm(profileId, showHint, fromManage) {
+  editingProfileId = profileId || null;
+  cameFromManage = !!fromManage;
+  const p = profiles.find(x => x.id === editingProfileId);
+  $("profileTitle").textContent = p ? "Edit profile" : "Add profile";
+  $("saveProfile").textContent = p ? "Save changes" : "Add profile";
+  $("profileHint").hidden = !showHint;
+  $("pname").value = p ? p.name : "";
+  $("ppan").value = p ? (p.pan || "") : "";
+  $("dangerZone").hidden = !p;
+  if (p) {
+    const n = ipos.filter(i => i.profileId === p.id).length;
+    $("deleteNote").textContent = n ? `This also deletes its ${plural(n, "IPO entry", "IPO entries")}.` : "This profile has no IPO entries.";
+  }
+  $("profileDialog").showModal();
+}
+
+$("addFromManage").onclick = () => { $("manageDialog").close(); openProfileForm(null, false, true); };
+$("cancelProfile").onclick = () => $("profileDialog").close();
+
+$("saveProfile").onclick = async () => {
+  const name = $("pname").value.trim();
+  if (!name) return alert("Enter a profile name");
+  const data = { name, pan: $("ppan").value.trim().toUpperCase() };
+  if (editingProfileId) await setDoc(doc(db, "users", uid, "profiles", editingProfileId), data);
+  else await addDoc(collection(db, "users", uid, "profiles"), data);
+  $("profileDialog").close();
+};
+
+$("deleteProfile").onclick = async () => {
+  const p = profiles.find(x => x.id === editingProfileId); if (!p) return;
+  const linked = ipos.filter(i => i.profileId === p.id);
+  const msg = linked.length
+    ? `Delete “${p.name}” and its ${plural(linked.length, "IPO entry", "IPO entries")}? This can't be undone.`
+    : `Delete “${p.name}”? This can't be undone.`;
+  if (!confirm(msg)) return;
+  await Promise.all(linked.map(i => deleteDoc(doc(db, "users", uid, "ipos", i.id))));
+  await deleteDoc(doc(db, "users", uid, "profiles", p.id));
+  if (filter === p.id) filter = "all";
+  $("profileDialog").close();
+};
+
+/* ---------- IPO entries ---------- */
+function openIpoDialog() {
+  if (!profiles.length) return openProfileForm(null, true, false);
+  if (!editingId && filter !== "all") $("iprofile").value = filter;
+  $("ipoDialog").showModal();
+}
+$("fab").onclick = () => { resetForm(); openIpoDialog(); };
+$("cancelIpo").onclick = () => { $("ipoDialog").close(); resetForm(); };
+
+const num = v => v === "" || v == null ? null : Number(v);
+
+$("saveIpo").onclick = async () => {
+  const data = {
+    name: $("iname").value.trim(), profileId: $("iprofile").value,
+    qty: num($("iqty").value), price: num($("iprice").value),
+    status: $("istatus").value, sell: num($("isell").value), charges: num($("icharges").value) ?? 0
+  };
+  if (!data.name || !data.profileId) return alert("IPO name and profile are required");
+  if (editingId) await setDoc(doc(db, "users", uid, "ipos", editingId), data);
+  else await addDoc(collection(db, "users", uid, "ipos"), data);
+  $("ipoDialog").close();
+  resetForm();
+};
+
+function resetForm() {
+  editingId = null;
+  ["iname","iqty","iprice","isell","icharges"].forEach(i => $(i).value = "");
+  $("istatus").value = "Applied";
+  $("formTitle").textContent = "Add IPO entry";
+}
+
+/* ---------- profit / loss ---------- */
+function pl(i) {
+  if (i.status === "Not allotted") return 0;
+  if (i.status === "Allotted" && i.sell != null && i.qty != null && i.price != null)
+    return (i.sell - i.price) * i.qty - (i.charges || 0);
+  return null;
+}
+
+/* ---------- render ---------- */
+function render() {
+  // profile chips
+  $("chips").innerHTML =
+    `<button class="chip ${filter==="all"?"on":""}" data-f="all">All</button>` +
+    profiles.map(p => `<button class="chip ${filter===p.id?"on":""}" data-f="${p.id}">${esc(p.name)}${p.pan?`<small>${esc(p.pan)}</small>`:""}</button>`).join("");
+  $("chips").querySelectorAll(".chip").forEach(c => c.onclick = () => { filter = c.dataset.f; render(); });
+
+  // profile dropdown in the IPO form (keeps selection)
+  const cur = $("iprofile").value;
+  $("iprofile").innerHTML = profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  if (cur) $("iprofile").value = cur;
+
+  const pmap = Object.fromEntries(profiles.map(p => [p.id, p.name]));
+
+  // Profiles list (Manage sheet)
+  $("profileList").innerHTML = profiles.length ? profiles.map(p => {
+    const mine = ipos.filter(i => i.profileId === p.id);
+    const net = mine.reduce((s, i) => s + (pl(i) ?? 0), 0);
+    const cls = net > 0 ? "pos" : net < 0 ? "neg" : "zero";
+    return `<button class="prow" data-pid="${p.id}" aria-label="Edit ${esc(p.name)}">
+      <div class="av">${esc((p.name || "?").trim().charAt(0).toUpperCase())}</div>
+      <div class="pinfo"><b>${esc(p.name)}</b><small>${p.pan ? "PAN ending " + esc(p.pan) : "No PAN added"}</small></div>
+      <div class="pnum"><b class="${cls}">${signed(net)}</b><small>${plural(mine.length, "entry", "entries")}</small></div>
+      ${ICON_PENCIL}
+    </button>`;
+  }).join("") : `<div class="empty"><b>No profiles yet</b>Create one profile for each PAN you apply with.</div>`;
+  $("profileList").querySelectorAll("[data-pid]").forEach(b => b.onclick = () => {
+    $("manageDialog").close(); openProfileForm(b.dataset.pid, false, true);
+  });
+
+  const list = ipos.filter(i => filter === "all" || i.profileId === filter);
+
+  // summary
+  let total = 0, a = 0, w = 0, n = 0;
+  list.forEach(i => {
+    const v = pl(i); if (v != null) total += v;
+    if (i.status === "Allotted") a++; else if (i.status === "Not allotted") n++; else w++;
+  });
+  $("scope").textContent = filter === "all" ? "All profiles" : (pmap[filter] || "Profile");
+  $("total").textContent = signed(total);
+  $("total").className = "total " + (total > 0 ? "pos" : total < 0 ? "neg" : "");
+  $("sAllot").textContent = a; $("sPend").textContent = w; $("sNone").textContent = n;
+  $("listTitle").textContent = `IPO entries (${list.length})`;
+
+  // list
+  if (!profiles.length) {
+    $("list").innerHTML = `<div class="empty"><b>Start by adding a profile</b>Create one profile for each PAN you apply with.<br><button class="btn" id="emptyAdd">Add profile</button></div>`;
+    $("emptyAdd").onclick = () => openProfileForm(null, false, false);
+    return;
+  }
+  if (!list.length) {
+    $("list").innerHTML = `<div class="empty"><b>No IPO entries yet</b>Tap “Add IPO” to record your first application.</div>`;
+    return;
+  }
+
+  $("list").innerHTML = list.map(i => {
+    const v = pl(i);
+    const cls = v == null ? "wait" : v > 0 ? "pos" : v < 0 ? "neg" : "";
+    const plText = v == null ? "Pending" : signed(v);
+    const badge = i.status === "Allotted" ? "allotted" : i.status === "Not allotted" ? "none" : "applied";
+    return `<article class="ipo">
+      <div class="ipo-head">
+        <div>
+          <h3>${esc(i.name)}</h3>
+          <div class="meta"><span class="who">${esc(pmap[i.profileId] || "Unknown profile")}</span><span class="badge ${badge}">${esc(i.status)}</span></div>
+        </div>
+        <div class="pl ${cls}"><strong>${plText}</strong><span>profit / loss</span></div>
+      </div>
+      <dl class="figs">
+        <div><dt>Shares</dt><dd>${i.qty ?? "–"}</dd></div>
+        <div><dt>Issue</dt><dd>${rupee(i.price)}</dd></div>
+        <div><dt>Sell</dt><dd>${rupee(i.sell)}</dd></div>
+        <div><dt>Charges</dt><dd>${rupee(i.charges || 0)}</dd></div>
+      </dl>
+      <div class="actions">
+        <button data-edit="${i.id}">Edit</button>
+        <button data-del="${i.id}">Delete</button>
+      </div>
+    </article>`;
+  }).join("");
+
+  $("list").querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    if (confirm("Delete this entry?")) deleteDoc(doc(db, "users", uid, "ipos", b.dataset.del));
+  });
+  $("list").querySelectorAll("[data-edit]").forEach(b => b.onclick = () => {
+    const i = ipos.find(x => x.id === b.dataset.edit); editingId = i.id;
+    $("iname").value = i.name; $("iprofile").value = i.profileId; $("iqty").value = i.qty ?? "";
+    $("iprice").value = i.price ?? ""; $("istatus").value = i.status;
+    $("isell").value = i.sell ?? ""; $("icharges").value = i.charges ?? "";
+    $("formTitle").textContent = "Edit IPO entry";
+    openIpoDialog();
+  });
+}
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+</script>
+</body>
+</html>
